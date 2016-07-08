@@ -35,8 +35,8 @@ void print_example_banner(string title);
 void intToTabBin(unsigned int num, int **res, int size_label);
 
 void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users, int bound_value);
-ChooserPoly get_label(ChooserEncoder &encoder, ChooserEncryptor &encryptor,ChooserEvaluator &evaluator, int *tab_bin_label, vector <ChooserPoly> & dataset, int index_start, int index_end);
-ChooserPoly equals(ChooserEncoder &encoder, ChooserEvaluator &evaluator, ChooserPoly p, int i);
+ChooserPoly get_label(ChooserEncoder &encoder, ChooserEncryptor &encryptor,ChooserEvaluator &evaluator, ChooserPoly elem_label, int index_start, int index_end);
+ChooserPoly equals(ChooserEncoder &encoder, ChooserEvaluator &evaluator, ChooserPoly elem_label);
 ChooserPoly copyPoly(ChooserPoly poly);
 
 int main(int argc, char *argv[]){
@@ -46,6 +46,7 @@ int main(int argc, char *argv[]){
   //A changer plus tard
   int nb_users=NB_USERS;
   int bound_value = BOUND_VALUE;
+  int base = BASE;
 
   if (argc > 2){
     cout << "Invalid argument" << endl;
@@ -66,26 +67,13 @@ int main(int argc, char *argv[]){
 
   print_example_banner("Distribution");
 
+  cout << "Running example for " << nb_users << " users, " << size_label << " bits labels and values of max size " << bound_value << endl;
+
   //Initialize parameters
   cout << "Initializing encryption parameters..." << endl;
 
   //Encryption parameters
   EncryptionParameters parms;
-  /*parms.poly_modulus()= "1x^2048 + 1";
-  parms.coeff_modulus() = ChooserEvaluator::default_parameter_options().at(2048);
-  parms.plain_modulus() = 1 << 8;
-  */
-
-  //Test simulation
-  /*ChooserEncoder Cencoder;
-  ChooserEncryptor Cencryptor;
-  ChooserEvaluator Cevaluator;
-
-  ChooserPoly p1 = Cencryptor.encrypt(Cencoder.encode(1));
-  //ChooserPoly p2 = Cencryptor.encrypt(Cencoder.encode(1));
-  ChooserPoly res = Cevaluator.add(p1, p1);
-  Cevaluator.select_parameters(res, parms);
-  */
 
   //Custom encryption parameters
   custom_parameters(parms, size_label, nb_users, bound_value);
@@ -97,11 +85,13 @@ int main(int argc, char *argv[]){
   cout << "Plain modulus : " << parms.plain_modulus().to_string() << endl;
 
 
-  if (parms.plain_modulus() < (BASE + 1)/2){
+  /*  if (parms.plain_modulus() < (BASE + 1)/2){
     parms.plain_modulus() = (BASE + 1)/2;
     cout << "new plain modulus : " << parms.plain_modulus().to_string() << endl;
   }
+  */
 
+  //parms.plain_modulus() = 1 << ( (int)ceil(log2(bound_value)) );
 
   //Encoder
   BalancedEncoder encoder(parms.plain_modulus());
@@ -133,54 +123,30 @@ void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users
   ChooserEncryptor encryptor;
   ChooserEvaluator evaluator;
 
-  srand(time(NULL));
 
-  //test for all the users or only one ? all here but computation on only one label
-  //users are not separated in dataset, we only want to know how much computation has been done
+  //elem_label represents one elem  of the binary decomp of the label
+  ChooserPoly elem_label(1,1);
 
-  cout << "biggest label" << endl;
-  int *label;
-  //for the biggest label, one size_label table (binary representation) (switch to random ?)
-  vector <ChooserPoly> encrypted_label;
-  intToTabBin(pow(2, size_label)-1, &label, size_label);
-
-  cout << "encrypted label" << endl;
-  for (int k=0; k < size_label; k++){
-    encrypted_label.push_back(encryptor.encrypt(encoder.encode(label[k])));
-    //encrypted_label = chiffré du label sur lequel on base nos calculs
-  }
-
-
-  cout << "random label" << endl;
-  //random table of zeros and ones of size size_label : will be the label we want to match
-  int *tab_bin_label =(int *) malloc(size_label * sizeof(int));
-  for (int j = 0; j < size_label; j++){
-    tab_bin_label[j]=rand()%2;
-  }
-
-  ChooserPoly result;//=encryptor.encrypt(encoder.encode(0));
-  ChooserPoly mult=encryptor.encrypt(encoder.encode(0));
-  //ChooserPoly value=encryptor.encrypt(encoder.encode(bound_value)); // any info ???
+  ChooserPoly result;
 
   //Pour encoding en base 3
-  ChooserPoly value(log(bound_value)/log(3), 1);
+  ChooserPoly value(ceil(log(bound_value)/log(3)), 1);//ou different second terme ??
 
-  //Changer la boucle pour mettre des copies de la premiere iteration
-  //Since the noise is random, it wont change much from ones to zeros (?). We only compute the whole thing for the highest label (so only ones).
+
   cout << "calcul unique" << endl;
-  mult = evaluator.multiply(get_label(encoder, encryptor, evaluator, tab_bin_label, encrypted_label, 0, size_label - 1), value);
-  //result = evaluator.add(mult, result);
+  
+  //when we put 0 for the forst term of the mult, it won't give accurate plain_modulus != when we use 1...
+  ChooserPoly mult = evaluator.multiply(get_label(encoder, encryptor, evaluator, elem_label, 0, size_label - 1), value);
+
   result = copyPoly(mult);
+  ChooserPoly cp = copyPoly(mult);
 
   cout << "add copies" << endl;
-  //ChooserPoly tmp = copyPoly(result); //++
+
   for (int i = 1; i < (1<<size_label)*nb_users; i++){
-    //result = evaluator.add(copyPoly(mult), tmp);
-    result = evaluator.add(copyPoly(mult), result);
-    //tmp = copyPoly(result);
+    result = evaluator.add(cp, result);
     }
-  //Do we get the same noise when multiplying by a plain integer n and when adding n times ???
-  //maybe/not but here we simulate addition of different ciphertexts and not plaintext mul
+
   cout << "select parameters" << endl;
   bool select_ok = evaluator.select_parameters(result, parms);
   cout << "Select return value  : " << select_ok << endl;
@@ -188,32 +154,27 @@ void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users
 
 //data contains size_bin encrypted bits of label without the encrypted value of data (not useful for noise growth)
 //Here we want to check whether the encrypted label is the same as the one in tab_bin_label
-ChooserPoly get_label(ChooserEncoder &encoder, ChooserEncryptor &encryptor,ChooserEvaluator &evaluator, int *tab_bin_label, vector <ChooserPoly> & encrypted_label, int index_start, int index_end){
+ChooserPoly get_label(ChooserEncoder &encoder, ChooserEncryptor &encryptor,ChooserEvaluator &evaluator, ChooserPoly elem_label, int index_start, int index_end){
 
   if (index_end == index_start){
-    return equals(encoder, evaluator, encrypted_label.at(index_start), tab_bin_label[index_start]);
+    return equals(encoder, evaluator, elem_label);
 
   }
   else if (index_end - index_start == 1){
-    return evaluator.multiply(equals(encoder, evaluator, encrypted_label.at(index_start), tab_bin_label[index_start]), equals(encoder, evaluator, encrypted_label.at(index_end), tab_bin_label[index_end]));
+    return evaluator.multiply(equals(encoder, evaluator, elem_label), equals(encoder, evaluator, elem_label));
   }
   
   else{
-    return evaluator.multiply(get_label(encoder, encryptor, evaluator, tab_bin_label, encrypted_label, index_start, floor((index_start+index_end)/2)), get_label(encoder, encryptor, evaluator, tab_bin_label, encrypted_label, ceil((index_start+index_end)/2), index_end));
+    return evaluator.multiply(get_label(encoder, encryptor, evaluator, elem_label, index_start, floor((index_start+index_end)/2)), get_label(encoder, encryptor, evaluator, elem_label, floor((index_start+index_end)/2)+1, index_end));
   }
 
 }
 
-ChooserPoly equals(ChooserEncoder &encoder, ChooserEvaluator &evaluator, ChooserPoly p, int i){
+//"returns an encrypted value of one if the poly p encrypts i, and an encrypted value of zero if not."
+ChooserPoly equals(ChooserEncoder &encoder, ChooserEvaluator &evaluator, ChooserPoly elem_label){
 
-  if (i == 0)
-    return evaluator.add_plain(evaluator.negate(p), encoder.encode(i));
-  else if (i == 1)
-    return p;
-  else{
-    cout << "Aborting : label must be in binary (equals)" << endl;
-    exit(1);
-  }
+  return evaluator.add_plain(evaluator.negate(elem_label), encoder.encode(1));
+  //more noise when we want to match zero so let's always compute this case.
 }
 
 ChooserPoly copyPoly(ChooserPoly poly){
@@ -247,7 +208,7 @@ void intToTabBin(unsigned int num, int **res, int size_label) {
 
   *res = (int *) (malloc(size_label * sizeof(int)));
 
-  for (unsigned int i=0; i<size_label; i++) {
+  for (int i=0; i<size_label; i++) {
     (*res)[SIZE_LABEL-i-1] = (num & (1 << i)) ? 1 : 0;
   }
 }
