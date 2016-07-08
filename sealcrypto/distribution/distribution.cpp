@@ -16,8 +16,8 @@
 
 #endif
 
-//binary size of label (must be even)
-#define SIZE_LABEL 6
+//binary size of label
+#define SIZE_LABEL 5
 
 //upper bound on the values associated with each label
 #define BOUND_VALUE 50
@@ -32,66 +32,78 @@ using namespace std;
 using namespace seal;
 
 void print_example_banner(string title);
-void intToTabBin(unsigned int num, int **res, int size_label);
+void dispTime(clock_t cBeginning);
 
-void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users, int bound_value);
+void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users, int bound_value, int base);
 ChooserPoly get_label(ChooserEncoder &encoder, ChooserEncryptor &encryptor,ChooserEvaluator &evaluator, ChooserPoly elem_label, int index_start, int index_end);
 ChooserPoly equals(ChooserEncoder &encoder, ChooserEvaluator &evaluator, ChooserPoly elem_label);
 ChooserPoly copyPoly(ChooserPoly poly);
 
 int main(int argc, char *argv[]){
 
-  int size_label=0;
-
-  //A changer plus tard
+  int size_label=SIZE_LABEL;
   int nb_users=NB_USERS;
   int bound_value = BOUND_VALUE;
   int base = BASE;
 
-  if (argc > 2){
-    cout << "Invalid argument" << endl;
-    cout << "Usage : ./distribution.exe <size_entry>" << endl;
-    return 1;
-  }
-
   if (argc == 1){
-    size_label=SIZE_LABEL;
-    cout << "Default parameters : size = " << size_label << endl;
-  }
-  
-  if (argc == 2){
-    size_label = atoi(argv[1]);
-    cout << "User parameters : size = " << size_label << endl;
+    cout << "DEFAULT PARAMETERS" << endl;
   }
 
+ 
+  else if (argc == 5){
+    cout << "USER PARAMETERS" << endl;
+    nb_users = atoi(argv[1]);
+    size_label = atoi(argv[2]);
+    bound_value = atoi(argv[3]);
+    base = atoi(argv[4]);
+   
+    if (base%2 == 0){
+      cout << "base must be an odd integer at least 3" << endl;
+      return (1);
+    }
+
+  }
+
+  else {
+    print_example_banner("Usage : ");
+    cout << "Default parameters : ./distribution.exe" << endl;
+    cout << "User parameters : " << "./distribution.exe <nb_users> <size_label> <bound_value> <base>" << endl << endl;
+    cout << " * nb_users : number of users" << endl;
+    cout << " * size_label : number of bits used for each of the the labels" << endl;
+    cout << " * bound_value : maximum value that can be paired with each of the labels" << endl;
+    cout << " * base : base used for encoding integers into plaintext polynomials (must be an odd integer at least 3)" << endl;
+    cout << endl;
+    return(1);
+  }
+
+ 
+ 
 
   print_example_banner("Distribution");
 
-  cout << "Running example for " << nb_users << " users, " << size_label << " bits labels and values of max size " << bound_value << endl;
+  cout << "Running test for " << nb_users << " users, " << size_label << " bits labels and values of max size " << bound_value << endl;
+  cout << "Encoding is in base " << base << endl << endl;
 
   //Initialize parameters
   cout << "Initializing encryption parameters..." << endl;
 
+  clock_t start = clock();
+
   //Encryption parameters
   EncryptionParameters parms;
 
-  //Custom encryption parameters
-  custom_parameters(parms, size_label, nb_users, bound_value);
 
-    cout << "DONE" << endl;
+  //Custom encryption parameters
+  custom_parameters(parms, size_label, nb_users, bound_value, base);
+
+  cout << "Total time for generating accurate parameters : " << cout;
+  dispTime(start);
 
   cout << "Encryption parameters specify " << parms.poly_modulus().significant_coeff_count() << " coefficients with "
        << parms.coeff_modulus().significant_bit_count() << " bits per coefficient" << endl;
   cout << "Plain modulus : " << parms.plain_modulus().to_string() << endl;
 
-
-  /*  if (parms.plain_modulus() < (BASE + 1)/2){
-    parms.plain_modulus() = (BASE + 1)/2;
-    cout << "new plain modulus : " << parms.plain_modulus().to_string() << endl;
-  }
-  */
-
-  //parms.plain_modulus() = 1 << ( (int)ceil(log2(bound_value)) );
 
   //Encoder
   BalancedEncoder encoder(parms.plain_modulus());
@@ -117,39 +129,51 @@ int main(int argc, char *argv[]){
   return 0;
   }
 
-void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users, int bound_value){
-  cout << "custom parameters (this may take some time)" << endl;
-  ChooserEncoder encoder;
+void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users, int bound_value, int base){
+  //cout << "Custom parameters" << endl;
+  clock_t start_custom = clock();
+
+  //if pour le cas default sans parametre ? Mais constructeur a l'initialisation...
+  ChooserEncoder encoder(base);
+
   ChooserEncryptor encryptor;
   ChooserEvaluator evaluator;
 
+  //size of one coeff in the chosen basis
+  int size_coeff = (base - 1)/2;
 
-  //elem_label represents one elem  of the binary decomp of the label
-  ChooserPoly elem_label(1,1);
+  //elem_label represents one element  of the binary decomp of the label
+  ChooserPoly elem_label(1,size_coeff);
 
   ChooserPoly result;
 
   //Pour encoding en base 3
-  ChooserPoly value(ceil(log(bound_value)/log(3)), 1);//ou different second terme ??
+  ChooserPoly value(ceil(log(bound_value)/log(base)), size_coeff);//ou different second terme ??
 
 
-  cout << "calcul unique" << endl;
-  
-  //when we put 0 for the forst term of the mult, it won't give accurate plain_modulus != when we use 1...
+  //when we put 0 for the first term of the mult, it won't give accurate plain_modulus != when we use 1...
   ChooserPoly mult = evaluator.multiply(get_label(encoder, encryptor, evaluator, elem_label, 0, size_label - 1), value);
 
   result = copyPoly(mult);
   ChooserPoly cp = copyPoly(mult);
 
-  cout << "add copies" << endl;
+  //cout << "add copies" << endl;
 
   for (int i = 1; i < (1<<size_label)*nb_users; i++){
     result = evaluator.add(cp, result);
     }
 
-  cout << "select parameters" << endl;
+  cout << endl << "Time spent simulating computation : " << endl;
+  dispTime(start_custom);
+  clock_t start_select = clock();
+
+  //cout << "select parameters" << endl;
   bool select_ok = evaluator.select_parameters(result, parms);
   cout << "Select return value  : " << select_ok << endl;
+
+  cout << endl << "Time spent by the library to select accurate parameters : " << endl;
+  dispTime(start_select);
+  
 }
 
 //data contains size_bin encrypted bits of label without the encrypted value of data (not useful for noise growth)
@@ -199,24 +223,9 @@ void print_example_banner(string title)
     }
 }
 
-void intToTabBin(unsigned int num, int **res, int size_label) {
-  // At the end of this function, "res" contains a table of the bit decomposion of "num" (e.g. : res = [0,1,0,0,1,0] for num = 10 with MAX_BITS = 6)
-  if (num > (1 << SIZE_LABEL)) {
-    cout << "Number is bigger than the maximum" << endl;
-    return;
-    }
 
-  *res = (int *) (malloc(size_label * sizeof(int)));
-
-  for (int i=0; i<size_label; i++) {
-    (*res)[SIZE_LABEL-i-1] = (num & (1 << i)) ? 1 : 0;
-  }
+// Timer function
+void dispTime(clock_t cBeginning) {
+  // Displays the elapsed time between cBeginning and the current time
+  cout << "Time : " << (clock() - cBeginning) / ((double) CLOCKS_PER_SEC) << " seconds." << endl << endl;
 }
-
-/*void encrypt_binary_decomp(vector <int> &tab(SIZE_LABEL), vector <BigPolyArray> & encrypt_tab(SIZE_LABEL), Encryptor encryptor, Encoder encoder){
-
-  for(int i=0; i<SIZE_LABEL; i++){
-    encrypt_tab.at(i) =  encryptor.encrypt(encoder.encode(tab.at(i)));
-  }
-}
-*/
