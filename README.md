@@ -4,9 +4,14 @@ To lauch the test for parameters selection :
 
 >./distribution
 
+(Default parameters)
+
 or 
 
->./distribution *size_label*
+>./distribution *nb_user size_label bound_value base*
 
-Up to *size_label* = 6 (64 different values) , the computation takes a decent amount of time on a regular computer.
+* nb_users : number of users
+* size_label : number of bits used for each of the the labels
+* bound_value : maximum value that can be paired with each of the labels
+* base : base used for encoding integers into plaintext polynomials (must be an odd integer at least 3)
 
