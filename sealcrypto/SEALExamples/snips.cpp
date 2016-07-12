@@ -9,7 +9,8 @@
 #include "seal.h"
 
 #ifndef MAX_BITS
-#define MAX_BITS 2
+#define MAX_BITS 5
+
 #endif
 
 #ifndef NB_USERS
@@ -61,8 +62,8 @@ void dispTime(clock_t cBeginning) {
 // MAtching function 
 
 BigPolyArray match_func (Evaluator &evaluator, vector <BigPolyArray> &label, int beg, int end){
-	if (end-beg == 0) return label[beg];
-	else if (end-beg == 1) return evaluator.multiply(label[beg], label[end]);
+	if (end-beg == 0) return label.at(beg);
+	else if (end-beg == 1) return evaluator.multiply(label.at(beg), label.at(end));
 	else return evaluator.multiply(match_func(evaluator, label, beg, floor((end+beg)/2)), match_func(evaluator, label, (end+beg)/2 +1, end));
 }
 
@@ -75,13 +76,13 @@ BigPolyArray ind_function( Encryptor &encryptor, BalancedEncoder &encoder, Evalu
 	// We apply the indicative functions for each one of the bits of the label binary decomposition
 	for (int i=0; i<MAX_BITS; ++i){
 		if ((*bin_decomp_label)[i] == 0){
-			encrypted_label_ind_func[i] = (indicatorZero( user.at(i), evaluator, one));
+			encrypted_label_ind_func[i] = (indicatorZero(user[i], evaluator, one));
 		}else{
 			encrypted_label_ind_func[i] = ( user[i]);
 		}
 	}
-	cout << "*******4*****" << endl;
-	return match_func(evaluator, encrypted_label_ind_func, 0, MAX_BITS-1);
+	//return match_func(evaluator, encrypted_label_ind_func, 0, MAX_BITS-1);
+	return encrypted_label_ind_func[1];
 }
 
 // THis fucntion returns a sommation of all the values related to a label passed as parameter
@@ -171,7 +172,7 @@ int main(int argc, char **argv) {
     
       for (int k=0; k<MAX_BITS; k++) {
 	// We add the encrypted version of the tabler in the result vector
-	tmpRow[i] = (encryptor.encrypt(encoder.encode(tmpBitDecomp[k])));
+	tmpRow[i] = encryptor.encrypt(encoder.encode(tmpBitDecomp[k]));
       }
       // Finally, we add the encrypted value at the end
       tmpRow[MAX_BITS] = (encryptor.encrypt(encoder.encode(tmpRand)));
@@ -182,7 +183,7 @@ int main(int argc, char **argv) {
     dataBase.push_back(user);
     user.clear();
   }
-	BigPolyArray stat_result = stat(dataBase, encryptor, encoder, evaluator, 1, one);
+	BigPolyArray stat_result = stat(dataBase, encryptor, encoder, evaluator, 31, one);
   cout << "valeur 4 : " << encoder.decode_int64(decryptor.decrypt(stat_result)) << endl;
   cout << "...generation complete." << endl;
   dispTime(beginning);

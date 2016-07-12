@@ -9,10 +9,9 @@
 #include "seal.h"
 
 #ifndef CLEAR
-
 #define CLEAR "clear"
-
 #endif
+
 
 using namespace std;
 using namespace seal;
@@ -160,7 +159,7 @@ BigPolyArray calcul_moyenne_ponderee(Evaluator &evaluator, BalancedFractionalEnc
   vector<BigPolyArray> encrypte_produits;
   double quotient = 0.0;
   BigPoly inverseQuotient;
-  
+  cout << "ok" << endl;
   // Encodage des coefficients
   for (size_t i=0; i<size; i++) {
     quotient += coefficients.at(i);
@@ -237,7 +236,38 @@ void afficherPoly(BigPoly poly, string nomPoly) {
   
   dixLignes();
 }
+ // Affiche un tableau de réels
+void afficher_tableau (vector<double> &tab) {
+  cout << "[";
+  size_t size = tab.size();
+  for (size_t i=0; i<size; i++) {
+    cout << tab[i] << ((i != size - 1) ? " " : "");
+  }
+  cout << "]" << endl;
+}
+// Fonction qui remplit un tableau aléatoirement 
 
+void remplir_tab_reel(int taille, vector <double> &tab){
+	for (int i=0; i<taille; i++){
+  	tab.push_back((double)(rand()%100)/12);
+  }
+}
+
+
+// Cette fonction remplit un tableau de réels mais ne les chiffre pas, elle ne fait que les encoder
+
+void encode_tab_reel(vector <BigPoly> &tab, vector <double> &tab1, BalancedFractionalEncoder &encoder){
+	for (unsigned int i=0; i<tab1.size(); i++){
+		tab.push_back(encoder.encode(tab1.at(i)));
+  }
+}
+
+
+void encrypt_tab(vector <BigPolyArray> &encrypt, vector <BigPoly> &encode, Encryptor &encryptor){
+	for (unsigned int i=0; i<encode.size(); i++){
+		encrypt.push_back(encryptor.encrypt(encode.at(i)));
+	}
+}
 // La fonction qui affiche les polynômes de type BigPolyArray
 
 void afficherPoly(BigPolyArray poly, string nomPoly){
@@ -252,14 +282,7 @@ void afficherPoly(BigPolyArray poly, string nomPoly){
   dixLignes();
 }
 
-void afficher_tableau(vector<double> &tab) {
-  cout << "[";
-  size_t size = tab.size();
-  for (size_t i=0; i<size; i++) {
-    cout << tab[i] << ((i != size - 1) ? " " : "");
-  }
-  cout << "]" << endl;
-}
+
 
 int menu() {
   // Retourne le choix de l'utilisateur
@@ -270,7 +293,7 @@ int menu() {
   cout << "2.     Additionner les valeurs chiffrees" << endl;
   cout << "3.     Multiplier les valeurs chiffrees" << endl;
   cout << "4.     Afficher les cles" << endl;
-  cout << "5.     Afficher les valeurs encryptes" << endl;
+  cout << "5.     Afficher des valeurs encryptes" << endl;
   cout << "6.     Exponentiation rapide VS exponentiation naïve" << endl;
   cout << "7.     Exemple d'un calcul de moyenne pondérée" << endl;
   cout << "8.     Exemple d'un calcul de variance" << endl;
@@ -301,29 +324,17 @@ void func(bool test=false) {
 
   // Choix des valeurs a encrypter
   int val1, val2;
-
-  if (test) {
-    cout << "Choisir deux nombres (entiers) a encrypter" << endl;
-
-    cin >> val1;
-    cin >> val2;
-  }
-  else {
-    val1 = 1232;
-    val2 = 2;
-  }
+  BigPoly encode1;
+  BigPoly encode2;
+	BigPolyArray encrypte1;
+	BigPolyArray encrypte2;
   
   // Encodeur pour les entiers
   BalancedEncoder encoder(parms.plain_modulus());
   // Encodeur pour les réels
   BalancedFractionalEncoder fracEncoder(parms.plain_modulus(), parms.poly_modulus(), 256, 128);
-
-  // Encodage des valeurs
-  BigPoly encode1 = encoder.encode(val1);
-  BigPoly encode2 = encoder.encode(val2);
-  cout << "Valeur " << val1 << " encodee comme le polynome " << encode1.to_string() << endl;
-  cout << "Valeur " << val2 << " encodee comme le polynome " << encode2.to_string() << endl;
-
+	
+	
   // Timer
   clock_t debut = clock();
 
@@ -341,12 +352,7 @@ void func(bool test=false) {
   afficherTempsEcoule(debut);
   debut = clock();
 
-  // Chiffrement des valeurs
-  cout << "Chiffrement des valeurs..." << endl;
   Encryptor encryptor(parms, public_key);
-  BigPolyArray encrypte1 = encryptor.encrypt(encode1);
-  BigPolyArray encrypte2 = encryptor.encrypt(encode2);
-  cout << "...chiffrement des valeurs termine." << endl << endl;
   afficherTempsEcoule(debut);
   
   // Evaluator : gere les opérations sur les donnees chiffrees
@@ -357,18 +363,15 @@ void func(bool test=false) {
   BigPolyArray tmp = encryptor.encrypt(encoder.encode(0));
   
   srand(time(NULL));
+  
+  int TAB_SIZE;
   // Tableau de valeurs                                                                                                                                               
   vector<double> tab ;
-  for (int i=0; i<10; i++){
-  	tab.push_back((double)(rand()%100)/12);
-  }
-  // Tableau de coefficients                                                                                                                                                                         
-  vector<double> coefficients ;
-  for (int i=0; i<10; i++){
-  	coefficients.push_back((double)(rand()%100)/15);
-  }
+  vector <BigPoly> encoded_tab;
+  vector <BigPolyArray> encrypted_tab;
   
-  vector<BigPolyArray> encrypted_tab;
+  // Tableau de coefficients                                                                                                                                                                         
+  vector <double> coeffs;
   vector<BigPoly> encoded_coeffs;
   size_t size = tab.size();
   
@@ -407,46 +410,64 @@ transport dans chacunes des deux conditions climatiques étudiées. */
   vector < vector <vector <BigPolyArray> > >moyen_de_transport;
   vector <vector <BigPolyArray> > alea;
   vector <BigPolyArray> temp_alea(2);
-  for (int i=0; i<100; i++){
-   // On tire aléatoirement les deux moyens de transport utilisés par un personne  quand il fait beau (a) et quand il pleut (b) .
-   int a, b;
-   a = rand()%4;
-   b = rand()%4;
-   temp_alea[0] = encryptor.encrypt(encoder.encode(a/2));
-   temp_alea[1] = encryptor.encrypt(encoder.encode(a%2));
-   alea.push_back(temp_alea);
-   temp_alea [0] = encryptor.encrypt(encoder.encode(b/2));
-   temp_alea [1] = encryptor.encrypt(encoder.encode(b%2));
-   alea.push_back(temp_alea);
-   //On ajoute cette personne dans le tableau moyen_de_transport.
-    moyen_de_transport.push_back(alea);
-    alea.clear();
-  }
+  
   
   do {
     system(CLEAR);
     debut = clock();
-    encoded_coeffs.clear();
-    encrypted_tab.clear();
     switch (menu()) {
     case 1 :
+    
+    	cout << "Entrez la valeur" << endl;
+    	cin >> val1;
+    	cout << "chiffrement de la valeur ..." << endl;
+    	encode1 = encoder.encode(val1);
+    	encrypte1 = encryptor.encrypt(encode1);
+    	cout << "... Valeur chiffrée." << endl;
+    	cout << "Déchiffrement de la  ... " << endl;
+    	cout << "valeur  = ";
       dechiffrement(secret_key, parms, encrypte1);
-      dechiffrement(secret_key, parms, encrypte2);
       afficherTempsEcoule(debut);
       continuer();
       break;
       
     case 2 :
-      cout << endl << "Addition..." << endl;
+    
+      cout << endl << "Addition de deux chiffrés" << endl;
+      cout << "Entrez la valeur 1 " << endl;
+      cin >> val1;
+      cout << "Entrez la valeur 2 " << endl;
+      cin >> val2;
+      cout << "chiffrement de la valeur 1 ..." << endl;
+    	encrypte1 = encryptor.encrypt(encoder.encode(val1));
+    	cout << "Valeur 1 chiffrée." << endl;
+    	cout << "Chiffrement de la valeur 2 ... "<< endl;
+  		encrypte2 = encryptor.encrypt(encoder.encode(val2));
+  		cout << "valeur 2 chiffrée ." << endl;
+  		cout << "Addition  des deux chiffrés..." << endl;
       tmp = evaluator.add(encrypte1, encrypte2);
+      cout << "Dechiffrement du résultat ..." << endl;
       dechiffrement(secret_key, parms, tmp);
       afficherTempsEcoule(debut);
       continuer();
       break;
       
     case 3 :
-      cout << endl << "Multiplication..." << endl;
+      
+      cout << endl << "Multiplication de deux chiffrés" << endl;
+      cout << "Entrez la valeur 1 " << endl;
+      cin >> val1;
+      cout << "Entrez la valeur 2 " << endl;
+      cin >> val2;
+      cout << "chiffrement de la valeur 1 ..." << endl;
+    	encrypte1 = encryptor.encrypt(encoder.encode(val1));
+    	cout << "Valeur 1 chiffrée." << endl;
+    	cout << "Chiffrement de la valeur 2 ... "<< endl;
+  		encrypte2 = encryptor.encrypt(encoder.encode(val2));
+  		cout << "valeur 2 chiffrée ." << endl;
+  		cout << "Multiplication des deux chiffrés" << endl;
       tmp = evaluator.multiply(encrypte1, encrypte2);
+      cout << "Dechiffrement du résultat  ..." << endl;
       dechiffrement(secret_key, parms, tmp);
       afficherTempsEcoule(debut);
       continuer();
@@ -460,8 +481,10 @@ transport dans chacunes des deux conditions climatiques étudiées. */
       break;
       
     case 5 :
-      afficherPoly(encrypte1, "Valeur 1");
-      afficherPoly(encrypte2, "Valeur 2");
+    	cout << "Entrez une valeur à chiffrer" << endl;
+    	cin >> val1;
+    	encrypte2 = encryptor.encrypt(encoder.encode(val1));
+      afficherPoly(encrypte2, "Valeur");
       afficherTempsEcoule(debut);
       continuer();
       break;
@@ -500,42 +523,81 @@ transport dans chacunes des deux conditions climatiques étudiées. */
       break;
      
     case 7 :
+    	cout << "Entrez la taille des deux tableaux "  << endl;
+    	cin >> TAB_SIZE;
       cout << endl << "Calcul de la moyenne pour le tableau : ";
-      afficher_tableau(tab);
+ 			remplir_tab_reel(TAB_SIZE, tab);
+ 			afficher_tableau(tab);
+ 			cout << "encodage du tableau ..." << endl;
+ 			encode_tab_reel(encoded_tab, tab, fracEncoder);
+ 			cout << "términé." << endl;
+ 			cout << "chiffrement du tableau ..." << endl;
+ 			encrypt_tab(encrypted_tab, encoded_tab, encryptor);
       cout << endl << "Et coefficients : ";
-      afficher_tableau(coefficients);
+ 			remplir_tab_reel(TAB_SIZE, coeffs);
+ 			afficher_tableau(coeffs);
+ 			cout << "encodage des coeffs ..." << endl;
+ 			encode_tab_reel(encoded_coeffs, coeffs, fracEncoder);
+ 			cout << "terminé." << endl;
       cout << endl;
-      
-      // Encodage et Cryptage du tableau de valeurs
-      for (size_t i=0; i<size; i++) {
-	temp = fracEncoder.encode(tab.at(i));
-	encrypted_tab.push_back(encryptor.encrypt(temp));
-      }
 
-      tmp = calcul_moyenne_ponderee(evaluator, fracEncoder, encrypted_tab, coefficients);
+      tmp = calcul_moyenne_ponderee(evaluator, fracEncoder, encrypted_tab, coeffs);
       afficherTempsEcoule(debut);
       dechiffrement(secret_key, parms, tmp, true);
+      encoded_coeffs.clear();
+    	encrypted_tab.clear();
+    
       continuer();
       break;
      
     case 8 :
+    	cout << "Entrez la taille du tableau " << endl;
+    	cin >> TAB_SIZE;
+    	tab.clear();
       cout << "Calcul de la variance pour le tableau : " << endl;
-      afficher_tableau(tab);
+      remplir_tab_reel(TAB_SIZE, tab);
+      cout << "Encodage du tableau ..." << endl;
+      encoded_tab.clear();
+      encode_tab_reel(encoded_tab, tab, fracEncoder);
+      cout << "terminé." << endl;
+      cout << "chiffrement du tableau ... " << endl;
+      encrypted_tab.clear();
+      encrypt_tab(encrypted_tab, encoded_tab, encryptor);
+      cout << "terminé." << endl;
       cout << endl;
       
       // Encodage et Cryptage du tableau de valeurs
-      for (size_t i=0; i<size; i++) {
-			temp = fracEncoder.encode(tab.at(i));
-			encrypted_tab.push_back(encryptor.encrypt(temp));
-      }
 
       tmp = calcul_variance(evaluator, fracEncoder, encrypted_tab, encryptor);
       afficherTempsEcoule(debut);
       dechiffrement(secret_key, parms, tmp, true);
+      encoded_coeffs.clear();
+    	encrypted_tab.clear();
+    
       continuer();
       break;
 
     case 9 :
+    	cout << "Entrez la taille du tableau : " << endl;
+    	cin >> TAB_SIZE;
+    	
+    	cout << "generation d'un tableau aléatoire ..." << endl;
+    	for (int i=0; i<TAB_SIZE; i++){
+			 // On tire aléatoirement les deux moyens de transport utilisés par un personne  quand il fait beau (a) et quand il pleut (b) .
+			 int a, b;
+			 a = rand()%4;
+			 b = rand()%4;
+			 temp_alea[0] = encryptor.encrypt(encoder.encode(a/2));
+			 temp_alea[1] = encryptor.encrypt(encoder.encode(a%2));
+			 alea.push_back(temp_alea);
+			 temp_alea [0] = encryptor.encrypt(encoder.encode(b/2));
+			 temp_alea [1] = encryptor.encrypt(encoder.encode(b%2));
+			 alea.push_back(temp_alea);
+			 //On ajoute cette personne dans le tableau moyen_de_transport.
+				moyen_de_transport.push_back(alea);
+				alea.clear();
+			}
+  		cout << "terminé." << endl;
       cout << "Soleil:" << endl;
       cout << "Le nombre de personnes ayant utilisé leur voiture personnelle est : " ;
       dechiffrement(secret_key, parms, stat(moyen_de_transport, 0, 0, evaluator, encoder, encryptor), true) ;
