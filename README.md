@@ -1,6 +1,6 @@
 # SEAL_ML
 
-To lauch the test for parameters selection : 
+To launch the test for parameters selection : 
 
 >./distribution
 
