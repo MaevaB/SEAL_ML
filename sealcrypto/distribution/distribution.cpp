@@ -97,7 +97,7 @@ int main(int argc, char *argv[]){
   //Custom encryption parameters
   custom_parameters(parms, size_label, nb_users, bound_value, base);
 
-  cout << "Total time for generating accurate parameters : " << cout;
+  cout << "Total time for generating accurate parameters : " << endl;
   dispTime(start);
 
   cout << "Encryption parameters specify " << parms.poly_modulus().significant_coeff_count() << " coefficients with "
