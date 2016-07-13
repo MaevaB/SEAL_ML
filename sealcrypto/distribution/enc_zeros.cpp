@@ -107,7 +107,7 @@ void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users
   ChooserPoly result;
 
   //value associated with each label
-  ChooserPoly value(ceil(log(bound_value)/log(base)), base);//ou different second terme ??
+  ChooserPoly value(ceil(log(bound_value)/log(base)) + 1, base);//ou different second terme ??
 
 
   /* We don't need to consider the labels for the computation since they are not encrypted.

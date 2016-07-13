@@ -123,13 +123,13 @@ void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users
   ChooserEvaluator evaluator;
 
   //size of one coeff in the chosen basis
-  int size_coeff = (base - 1)/2;
+  //int size_coeff = (base - 1)/2;
 
   //elem_label represents one element  of the binary decomp of the label
   ChooserPoly result;
 
   //Pour encoding en base 3
-  ChooserPoly value(ceil(log(bound_value)/log(base)), base);//ou different second terme ??
+  ChooserPoly value(ceil(log(bound_value)/log(base)) + 1, base);//ou different second terme ??
 
 
   //when we put 0 for the first term of the mult, it won't give accurate plain_modulus != when we use 1...
