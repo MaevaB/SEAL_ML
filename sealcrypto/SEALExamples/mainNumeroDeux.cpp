@@ -366,14 +366,13 @@ void func(bool test=false) {
   
   int TAB_SIZE;
   // Tableau de valeurs                                                                                                                                               
-  vector<double> tab ;
+  vector <double> tab ;
   vector <BigPoly> encoded_tab;
   vector <BigPolyArray> encrypted_tab;
   
   // Tableau de coefficients                                                                                                                                                                         
   vector <double> coeffs;
   vector<BigPoly> encoded_coeffs;
-  size_t size = tab.size();
   
   bool sortie = false;
   double valeur;
@@ -523,6 +522,7 @@ transport dans chacunes des deux conditions climatiques étudiées. */
       break;
      
     case 7 :
+    	cout << "*****************************************\n On genere un tableau de valeurs et un tableau de coefficients, puis\n on encode et on chiffre les valeurs, tandis \nque les coefficients sont juste encodés en polynômes, car \non suppose que les coefficients ne sont pas forcément secrets.\n****************************************" << endl;
     	cout << "Entrez la taille des deux tableaux "  << endl;
     	cin >> TAB_SIZE;
       cout << endl << "Calcul de la moyenne pour le tableau : ";

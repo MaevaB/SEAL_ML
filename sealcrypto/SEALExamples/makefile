@@ -2,7 +2,7 @@
 BIN_DIR=../bin
 INCLUDE_DIR=../SEAL
 CXXFLAGS=-Wall -Wno-unused-function -std=c++11 -O3 -I$(INCLUDE_DIR)
-SRCS=main.cpp
+SRCS=mainNumeroDeux.cpp
 OBJS=$(SRCS:.cpp=.o)
 SEALRUN=$(BIN_DIR)/SealExample.exe
 
