@@ -2,9 +2,9 @@
 BIN_DIR=../bin
 INCLUDE_DIR=../SEAL
 CXXFLAGS=-Wall -Wno-unused-function -std=c++11 -O3 -I$(INCLUDE_DIR)
-SRCS=distribution.cpp
+SRCS=enc_zeros.cpp
 OBJS=$(SRCS:.cpp=.o)
-SEALRUN=$(BIN_DIR)/distribution.exe
+SEALRUN=$(BIN_DIR)/enc_labels.exe
 
 .PHONY: all clean
 
