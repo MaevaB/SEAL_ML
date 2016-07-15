@@ -8,7 +8,11 @@ Since the labels and data are encrypted, it doesn't leak information on which la
 The server will have to compute the encrypted data he received. He will add the values of one specific label for all users.
 And then send back the result to each user, who will be able to decrypt it.
 
+<<<<<<< HEAD
 In the second model, we do the exact same computation but without encrypting the labels.
+=======
+In the second model (implementation still in progress), we do the exact same computation but without encrypting the labels.
+>>>>>>> Simulation
 Thus, we send only the encrypted data to the server and not the labels. The server is able to collect the data he needs using the indexes of each data.
 
 
