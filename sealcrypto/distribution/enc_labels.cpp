@@ -126,6 +126,8 @@ void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users
   //int size_coeff = (base - 1)/2;
 
   //elem_label represents one element  of the binary decomp of the label
+  ChooserPoly elem_label(1,base);
+
   ChooserPoly result;
 
   //Pour encoding en base 3
@@ -148,9 +150,7 @@ void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users
   dispTime(start_custom);
   clock_t start_select = clock();
 
-  //cout << "select parameters" << endl;
   bool select_ok = evaluator.select_parameters(result, parms);
-  //cout << "Select return value  : " << select_ok << endl;
 
   if ( !select_ok){
     cout << endl << "Time spent by the library to select accurate parameters : " << endl;
