@@ -71,26 +71,43 @@ void print_example_banner(string title)
 }
 
 //On a construit une structure avant pour ne pas compter la generation des parametres dans le timer
-BigPolyArray sum (int bound_value, int nb_users, int base, vector<BigPolyArray> values, Evaluator &evaluator){
-  BigPolyArray res = values[0];
-  for(int i=1; i<nb_users; i++){
-    res= evaluator.add(res, values[i]);
+BigPolyArray sum (int nb_users, vector<BigPolyArray> values, Evaluator &evaluator, int index_start, int index_end){
+  if (index_start == index_end){
+    return values.at(index_start);
   }
-  
-  return res;
+  else{
+    int index_mid = floor( (index_start+index_end) / 2 );
+    return evaluator.add( sum(nb_users, values, evaluator, index_start, index_mid), 
+			  sum(nb_users, values, evaluator, index_mid + 1, index_end) );
+  }
+
 }
 
 double average(int bound_value, int nb_users, int base, int nb_loop, Encryptor &encryptor, BalancedEncoder &encoder, Evaluator &evaluator, Decryptor &decryptor){
   vector<BigPolyArray> enc_table;
 
-  vector<BigPolyArray> values;
-  for ( int i=0; i < nb_loop; i++){
-    values.push_back(encryptor.encrypt(encoder.encode(rand()%bound_value)));
+
+  cout << "Generating random database..." << endl;
+  //table of the values from all the users
+  vector<vector<BigPolyArray>> values;
+  vector<BigPolyArray> elem;
+  //generate a random table for all the users (new rand for each loop /!\)
+  //Do not take too big nb_loop because table is size nb_loop * nb_users
+  for (int j=0; j< nb_loop; j++){
+    for ( int i=0; i < nb_users; i++){
+      elem.push_back(encryptor.encrypt(encoder.encode(rand()%bound_value)));
+    }
+    values.push_back(elem);
+    elem.clear();
   }
   
+  cout << "done" << endl;
+
   clock_t start = clock();
   for ( int i=0; i < nb_loop; i++){
-    enc_table.push_back( sum(bound_value, nb_users, base, values, evaluator));
+
+    enc_table.push_back( sum(nb_users, values.at(i), evaluator, 0, nb_users - 1));
+
   }
   cout << "Time for computing " << nb_loop << " sums of " << nb_users << " users :" << endl;
     double t = dispTime(start);
@@ -99,7 +116,16 @@ double average(int bound_value, int nb_users, int base, int nb_loop, Encryptor &
  
   return t;
 }
-
+ChooserPoly add_many(ChooserEvaluator &evaluator, ChooserPoly element, int index_start, int index_end) {
+  if (index_end <= index_start) {
+    return element;
+  }
+  else {
+    int index_mid = floor( (index_start+index_end) / 2 );
+    return evaluator.add(add_many(evaluator, element, index_start, index_mid),
+                         add_many(evaluator, element, index_mid + 1, index_end));
+  }
+}
 
 void custom_parameters(EncryptionParameters &parms, int nb_users, int bound_value, int base){
   //cout << "Custom parameters" << endl;
@@ -131,9 +157,7 @@ void custom_parameters(EncryptionParameters &parms, int nb_users, int bound_valu
 
   //cout << "add copies" << endl;
 
-  for (int i = 1; i < (nb_users); i++){
-    result = evaluator.add(cp, result);
-    }
+  result = add_many(evaluator, value, 0, nb_users-1);
 
   cout << endl << "Time spent simulating computation : " << endl;
   dispTime(start_custom);
@@ -257,7 +281,7 @@ int main(int argc, char *argv[]){
 
  
   clock_t computation = clock();
-  double result = average(bound_value, nb_users, base, 100, encryptor, encoder, evaluator, decryptor);
+  double result = average(bound_value, nb_users, base, 10, encryptor, encoder, evaluator, decryptor);
 
   cout << endl<< "Average computation time : " << result << endl;
 
