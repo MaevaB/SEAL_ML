@@ -18,9 +18,6 @@
 
 #endif
 
-//binary size of label
-#define SIZE_LABEL 3
-
 //upper bound on the values associated with each label
 #define BOUND_VALUE 50
 
@@ -45,11 +42,11 @@ void dispTab(int tab[], int len) {
 
 
 // Timer function
-void dispTime(clock_t cBeginning) {
+double dispTime(clock_t cBeginning) {
   // Displays the elapsed time between cBeginning and the current time
   cout << "Time : " << (clock() - cBeginning) / ((double) CLOCKS_PER_SEC) << " seconds." << endl << endl;
+  return (clock() - cBeginning) / ((double) CLOCKS_PER_SEC);
 }
-
 
 ChooserPoly copyPoly(ChooserPoly poly){
   ChooserPoly P(poly);
@@ -73,44 +70,56 @@ void print_example_banner(string title)
     }
 }
 
-
-
-// THis fucntion returns a sommation of all the values related to a label passed as parameter
-BigPolyArray stat2 (vector< vector < BigPolyArray > > &users, Evaluator &evaluator, unsigned int label){
-	
-	BigPolyArray tmp;
-	
-	// We calculate the binary representation of the label
-	//users.size --> NB_USERS ?
-	for (size_t i=0; i < users.size(); ++i){
-		if (i==0) tmp = users.at(i).at(label);
-		else 
-		{
-			tmp = evaluator.add(tmp, users.at(i).at(label)); 
-		}
-	}
-	// We return the sum of all the values of tmp_values
-	return tmp;
+//On a construit une structure avant pour ne pas compter la generation des parametres dans le timer
+BigPolyArray sum (int bound_value, int nb_users, int base, vector<BigPolyArray> values, Evaluator &evaluator){
+  BigPolyArray res = values[0];
+  for(int i=1; i<nb_users; i++){
+    res= evaluator.add(res, values[i]);
+  }
+  
+  return res;
 }
 
-void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users, int bound_value, int base){
+double average(int bound_value, int nb_users, int base, int nb_loop, Encryptor &encryptor, BalancedEncoder &encoder, Evaluator &evaluator, Decryptor &decryptor){
+  vector<BigPolyArray> enc_table;
+
+  vector<BigPolyArray> values;
+  for ( int i=0; i < nb_loop; i++){
+    values.push_back(encryptor.encrypt(encoder.encode(rand()%bound_value)));
+  }
+  
+  clock_t start = clock();
+  for ( int i=0; i < nb_loop; i++){
+    enc_table.push_back( sum(bound_value, nb_users, base, values, evaluator));
+  }
+  cout << "Time for computing " << nb_loop << " sums of " << nb_users << " users :" << endl;
+    double t = dispTime(start);
+    
+    t=t/nb_loop;
+ 
+  return t;
+}
+
+
+void custom_parameters(EncryptionParameters &parms, int nb_users, int bound_value, int base){
   //cout << "Custom parameters" << endl;
   clock_t start_custom = clock();
 
   //if pour le cas default sans parametre ? Mais constructeur a l'initialisation...
-  ChooserEncoder encoder(base);
-
+  ChooserEncoder encoder;
+  //ChooserEncoder encoder(base);
   ChooserEncryptor encryptor;
   ChooserEvaluator evaluator;
 
   //size of one coeff in the chosen basis
-  ChooserPoly result;
- 
-  //int size_coeff = (base - 1) / 2;
-  
-  //value associated with each label
-  ChooserPoly value(ceil(log(bound_value)/log(base)) + 1, base);//ou different second terme ??
+  //size_coeff = (base - 1)/2;
 
+  ChooserPoly result;
+
+  //value associated with each label
+  //ChooserPoly value(ceil(log(bound_value)/log(base)) + 1, 1);//ou different second terme ??
+  ChooserPoly value = encryptor.encrypt(encoder.encode(bound_value));
+  //ChooserPoly value = encryptor.encrypt(encoder.encode(0));
 
   /* We don't need to consider the labels for the computation since they are not encrypted.
      We just access the label we want for each user and then add all the data.
@@ -122,7 +131,7 @@ void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users
 
   //cout << "add copies" << endl;
 
-  for (int i = 1; i < nb_users; i++){
+  for (int i = 1; i < (nb_users); i++){
     result = evaluator.add(cp, result);
     }
 
@@ -150,7 +159,6 @@ void custom_parameters(EncryptionParameters &parms, int size_label, int nb_users
 
 int main(int argc, char *argv[]){
 
-  int size_label=SIZE_LABEL;
   int nb_users=NB_USERS;
   int bound_value = BOUND_VALUE;
   int base = BASE;
@@ -160,12 +168,11 @@ int main(int argc, char *argv[]){
   }
 
  
-  else if (argc == 5){
+  else if (argc == 4){
     cout << "USER PARAMETERS" << endl;
     nb_users = atoi(argv[1]);
-    size_label = atoi(argv[2]);
-    bound_value = atoi(argv[3]);
-    base = atoi(argv[4]);
+    bound_value = atoi(argv[2]);
+    base = atoi(argv[3]);
    
     if ( (base%2 == 0) || (base < 3) ){
       cout << "base must be an odd integer at least 3" << endl;
@@ -177,9 +184,8 @@ int main(int argc, char *argv[]){
   else {
     print_example_banner("Usage : ");
     cout << "Default parameters : ./enc_labels.exe" << endl;
-    cout << "User parameters : " << "./enc_labels.exe <nb_users> <size_label> <bound_value> <base>" << endl << endl;
+    cout << "User parameters : " << "./enc_labels.exe <nb_users> <bound_value> <base>" << endl << endl;
     cout << " * nb_users : number of users" << endl;
-    cout << " * size_label : number of bits used for each of the the labels" << endl;
     cout << " * bound_value : maximum value that can be paired with each of the labels" << endl;
     cout << " * base : base used for encoding integers into plaintext polynomials (must be an odd integer at least 3)" << endl;
     cout << endl;
@@ -191,7 +197,7 @@ int main(int argc, char *argv[]){
 
   print_example_banner("Simulation");
 
-  cout << "Running test for " << nb_users << " users, " << size_label << " bits labels and values of max size " << bound_value << endl;
+  cout << "Running test for " << nb_users << " users, " << "and values of max size " << bound_value << endl;
   cout << "Encoding is in base " << base << endl << endl;
 
 
@@ -206,7 +212,7 @@ int main(int argc, char *argv[]){
 
 
   //Custom encryption parameters
-  custom_parameters(parms, size_label, nb_users, bound_value, base);
+  custom_parameters(parms, nb_users, bound_value, base);
 
   cout << "Total time for generating accurate parameters : " << endl;
   dispTime(start);
@@ -245,36 +251,17 @@ int main(int argc, char *argv[]){
   print_example_banner("Actual computation");
 
 //Beginning of init params for test
-  vector<vector<BigPolyArray> > dataBase;
-  vector <BigPolyArray> user;
 
-  
-  clock_t start_database = clock();
 
   srand(time(NULL));
 
-  cout << "Generating a random " << nb_users << " users long database..." << endl;
-
-  cout << "users list generation ... " << endl; 
-
-  for (int i=0; i<nb_users; i++){
-  	for (int j=0; j < (1 << size_label); j++){
-  		user.push_back(encryptor.encrypt(encoder.encode(rand()%bound_value)));
-  	}
-  	dataBase.push_back(user);
-  	user.clear();
-  }
-  cout << "...generation complete." << endl << endl;;
-  cout << "Time for generating database : " << endl;
-  dispTime(start_database);
-
-
+ 
   clock_t computation = clock();
-  BigPolyArray stat_result = stat2(dataBase, evaluator, 5);
+  double result = average(bound_value, nb_users, base, 100, encryptor, encoder, evaluator, decryptor);
 
-  cout << endl<< "label 5 : " << encoder.decode_int64(decryptor.decrypt(stat_result)) << endl;
+  cout << endl<< "Average computation time : " << result << endl;
 
-  cout << endl << "Time spent on computation to find the data we want :" << endl;
+  cout << endl << "computation time :" << endl;
   dispTime(computation);
 
   //Relevant ?? irl we wouldn't generate a database since it would already be there ?
@@ -282,3 +269,4 @@ int main(int argc, char *argv[]){
   dispTime(start);
   return 0;
 }
+
