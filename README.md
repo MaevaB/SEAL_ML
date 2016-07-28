@@ -10,10 +10,6 @@ And then send back the result to each user, who will be able to decrypt it.
 
 In the second model, we do the exact same computation but without encrypting the labels.
 
-In the second model, we do the exact same computation but without encrypting the labels.
-
-In the second model (implementation still in progress), we do the exact same computation but without encrypting the labels.
-
 Thus, we send only the encrypted data to the server and not the labels. The server is able to collect the data he needs using the indexes of each data.
 
 
@@ -26,13 +22,13 @@ Compile :
 To launch the whole test for the first model : 
 >cd sealcrypto/bin
 
->./enc_labels
+>./enc_labelsOPT
 
 (Default parameters)
 
 or
 
->./enc_labels *nb_user size_label bound_value base*
+>./enc_labelsOPT *nb_user size_label bound_value base*
 
 
 * nb_users : number of users
